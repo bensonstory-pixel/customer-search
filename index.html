@@ -476,13 +476,23 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
+/* แปลงวันที่ ค.ศ. (DD/MM/YYYY) ในคอลัมน์วันที่ ให้แสดงเป็น พ.ศ. */
+const THAI_DATE_COLS = ['วันตรวจรับรอง', 'วันหมดอายุ'];
+function toBuddhistDate(s) {
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((s || '').toString().trim());
+  if (!m) return s;
+  const be = parseInt(m[3], 10) + 543;
+  return m[1].padStart(2, '0') + '/' + m[2].padStart(2, '0') + '/' + be;
+}
+
 function showDetail(idx) {
   const rec = window.__currentMatched[idx];
   modalTitle.textContent = rec['ชื่อ'] || '(ไม่มีชื่อ)';
   let body = '';
   for (const col of COLUMNS) {
     if (col === 'ชื่อ') continue;
-    const v = rec[col];
+    let v = rec[col];
+    if (THAI_DATE_COLS.includes(col)) v = toBuddhistDate(v);
     body += '<div class="field"><div class="field-label">' + escapeHtml(col) + '</div>' +
       '<div class="field-value' + (v ? '' : ' empty') + '">' + (v ? escapeHtml(v) : '-') + '</div></div>';
   }
