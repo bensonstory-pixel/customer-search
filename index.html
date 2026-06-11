@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ค้นหาข้อมูลลูกค้า</title>
+<style>
+  :root {
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --green: #16a34a;
+    --green-dark: #15803d;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "TH Sarabun New", "Tahoma", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, var(--primary), #60a5fa);
+    color: white;
+    padding: 24px 16px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  header h1 { margin: 0; font-size: 28px; }
+  header p { margin: 6px 0 0; font-size: 16px; opacity: 0.9; }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 16px 60px;
+  }
+  .search-box {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 16px 0;
+    z-index: 10;
+  }
+  #searchInput {
+    width: 100%;
+    font-size: 22px;
+    padding: 16px 18px;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    outline: none;
+    transition: border-color .15s;
+  }
+  #searchInput:focus { border-color: var(--primary); }
+  .hint {
+    color: var(--muted);
+    font-size: 15px;
+    margin-top: 8px;
+  }
+  .status-bar {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    font-size: 15px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+  }
+  .lock-link { color: var(--primary); text-decoration: underline; cursor: pointer; background: none; border: none; font-size: 15px; padding: 0; }
+  .result-count {
+    margin: 8px 0 16px;
+    font-size: 17px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: box-shadow .15s, transform .1s;
+  }
+  .card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+  }
+  .card .name {
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--primary-dark);
+    margin-bottom: 6px;
+  }
+  .card .row {
+    color: var(--muted);
+    font-size: 16px;
+    margin-top: 2px;
+  }
+  .card .row b { color: var(--text); font-weight: 500; }
+  .empty-state {
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+    font-size: 18px;
+  }
+  .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+
+  /* Modal */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 100;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 12px;
+    overflow-y: auto;
+  }
+  .overlay.active { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 16px;
+    max-width: 600px;
+    width: 100%;
+    padding: 24px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+  }
+  .modal-header h2 {
+    font-size: 23px;
+    margin: 0;
+    color: var(--primary-dark);
+  }
+  .close-btn {
+    background: var(--border);
+    border: none;
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .field {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .field:last-child { border-bottom: none; }
+  .field-label {
+    width: 160px;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 16px;
+  }
+  .field-value {
+    flex: 1;
+    min-width: 180px;
+    font-size: 17px;
+    word-break: break-word;
+  }
+  .field-value.empty { color: #c0c5cc; }
+  .map-link {
+    display: inline-block;
+    margin-top: 12px;
+    background: var(--primary);
+    color: white;
+    text-decoration: none;
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .map-link:active { background: var(--primary-dark); }
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 20px;
+  }
+
+  /* Lock screen */
+  #lockScreen {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .lock-card {
+    background: var(--card);
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 32px 28px;
+    max-width: 380px;
+    width: 100%;
+    text-align: center;
+  }
+  .lock-card .icon { font-size: 44px; margin-bottom: 8px; }
+  .lock-card h2 { margin: 0 0 6px; font-size: 22px; }
+  .lock-card p { color: var(--muted); font-size: 15px; margin: 0 0 18px; }
+  #pwInput {
+    width: 100%;
+    font-size: 20px;
+    padding: 14px 16px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+  #pwInput:focus { border-color: var(--primary); }
+  #pwSubmit {
+    width: 100%;
+    margin-top: 14px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  #pwSubmit:active { background: var(--primary-dark); }
+  .remember-row {
+    margin-top: 14px;
+    font-size: 15px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  #pwError {
+    color: var(--red);
+    font-size: 15px;
+    margin-top: 12px;
+    min-height: 20px;
+  }
+  #appRoot { display: none; }
+</style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="icon">🔒</div>
+    <h2>ฐานข้อมูลลูกค้า</h2>
+    <p>กรุณาใส่รหัสผ่านเพื่อดูข้อมูล</p>
+    <input type="password" id="pwInput" placeholder="รหัสผ่าน" autofocus>
+    <button id="pwSubmit">เข้าดูข้อมูล</button>
+    <div class="remember-row">
+      <input type="checkbox" id="rememberMe" checked>
+      <label for="rememberMe">จำรหัสผ่านไว้ในเครื่องนี้</label>
+    </div>
+    <div id="pwError"></div>
+  </div>
+</div>
+
+<div id="appRoot">
+<header>
+  <h1>🔍 ค้นหาข้อมูลลูกค้า</h1>
+  <p id="headerSubtitle">ฐานข้อมูลลูกค้า</p>
+</header>
+
+<div class="container">
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="พิมพ์ค้นหา: ชื่อ, ที่อยู่, เบอร์โทร, หมายเลขเครื่อง ฯลฯ" autofocus>
+    <div class="hint">พิมพ์ส่วนใดส่วนหนึ่งของข้อมูลก็ค้นเจอได้ เช่น ชื่อร้าน, จังหวัด, เบอร์โทร, หมายเลขเครื่องชั่ง</div>
+    <div class="status-bar">
+      <span id="statusText"></span>
+      <button id="lockBtn" class="lock-link">🔒 ล็อกหน้าจอ</button>
+    </div>
+  </div>
+  <div class="result-count" id="resultCount"></div>
+  <div id="results"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle"></h2>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<footer>
+  หากต้องการแก้ไข/เพิ่ม/ลบข้อมูล กรุณาแก้ไขในฐานข้อมูล Access โดยตรง<br>
+  ข้อมูลในเว็บนี้จะอัปเดตอัตโนมัติเมื่อเจ้าของร้านอัปโหลดข้อมูลใหม่
+</footer>
+</div>
+
+<script>
+const STORAGE_KEY_PW = 'customerSearch_pw_v2';
+
+let COLUMNS = [];
+let DATA = [];
+
+const lockScreen = document.getElementById('lockScreen');
+const appRoot = document.getElementById('appRoot');
+const pwInput = document.getElementById('pwInput');
+const pwSubmit = document.getElementById('pwSubmit');
+const pwError = document.getElementById('pwError');
+const rememberMe = document.getElementById('rememberMe');
+
+const searchInput = document.getElementById('searchInput');
+const resultsEl = document.getElementById('results');
+const resultCountEl = document.getElementById('resultCount');
+const overlay = document.getElementById('overlay');
+const modalTitle = document.getElementById('modalTitle');
+const modalBody = document.getElementById('modalBody');
+const headerSubtitle = document.getElementById('headerSubtitle');
+const statusText = document.getElementById('statusText');
+const lockBtn = document.getElementById('lockBtn');
+
+const MAX_RESULTS = 80;
+
+/* ---------- ถอดรหัสข้อมูล ---------- */
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+async function tryDecrypt(passphrase) {
+  const res = await fetch('data.enc.json', { cache: 'no-store' });
+  if (!res.ok) throw new Error('โหลดไฟล์ข้อมูลไม่สำเร็จ (data.enc.json)');
+  const enc = await res.json();
+  const salt = b64ToBytes(enc.salt);
+  const iv = b64ToBytes(enc.iv);
+  const ct = b64ToBytes(enc.ciphertext);
+
+  const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  const key = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: enc.iterations, hash: 'SHA-256' },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  const text = new TextDecoder().decode(plainBuf);
+  const data = JSON.parse(text);
+  return { data, meta: enc };
+}
+
+async function unlock(passphrase, fromStorage) {
+  pwError.textContent = fromStorage ? '' : 'กำลังตรวจสอบ...';
+  try {
+    const { data, meta } = await tryDecrypt(passphrase);
+    COLUMNS = data.columns;
+    DATA = data.records;
+    if (rememberMe.checked) {
+      try { localStorage.setItem(STORAGE_KEY_PW, passphrase); } catch (e) {}
+    } else {
+      try { localStorage.removeItem(STORAGE_KEY_PW); } catch (e) {}
+    }
+    lockScreen.style.display = 'none';
+    appRoot.style.display = 'block';
+    headerSubtitle.textContent = 'ฐานข้อมูลลูกค้าทั้งหมด ' + DATA.length + ' รายการ • ดูข้อมูลเท่านั้น (ไม่สามารถแก้ไขได้)';
+    statusText.textContent = 'ข้อมูลล่าสุด: ' + (meta.updatedAt || '-');
+    render();
+    return true;
+  } catch (err) {
+    if (!fromStorage) {
+      pwError.textContent = (err.message && err.message.includes('โหลดไฟล์')) ? err.message : 'รหัสผ่านไม่ถูกต้อง กรุณาลองใหม่';
+    }
+    return false;
+  }
+}
+
+pwSubmit.addEventListener('click', () => unlock(pwInput.value, false));
+pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(pwInput.value, false); });
+
+lockBtn.addEventListener('click', () => {
+  try { localStorage.removeItem(STORAGE_KEY_PW); } catch (e) {}
+  location.reload();
+});
+
+/* ---------- ค้นหา/แสดงผล ---------- */
+
+function normalize(s) {
+  return (s || '').toString().toLowerCase().trim();
+}
+function digitsOnly(s) {
+  return (s || '').toString().replace(/\D/g, '');
+}
+
+function matches(record, qNorm, qDigits) {
+  for (const col of COLUMNS) {
+    const v = record[col];
+    if (!v) continue;
+    if (normalize(v).includes(qNorm)) return true;
+    if (qDigits.length >= 3 && digitsOnly(v).includes(qDigits)) return true;
+  }
+  return false;
+}
+
+function render() {
+  const q = searchInput.value.trim();
+  if (!q) {
+    resultCountEl.textContent = '';
+    resultsEl.innerHTML = '<div class="empty-state"><div class="big">📋</div>พิมพ์คำค้นหาด้านบน เพื่อดูข้อมูลลูกค้า</div>';
+    return;
+  }
+  const qNorm = normalize(q);
+  const qDigits = digitsOnly(q);
+  const matched = [];
+  for (const rec of DATA) {
+    if (matches(rec, qNorm, qDigits)) {
+      matched.push(rec);
+      if (matched.length >= MAX_RESULTS) break;
+    }
+  }
+
+  if (matched.length === 0) {
+    resultCountEl.textContent = '';
+    resultsEl.innerHTML = '<div class="empty-state"><div class="big">🔎</div>ไม่พบข้อมูลที่ตรงกับ "' + escapeHtml(q) + '"</div>';
+    return;
+  }
+
+  resultCountEl.textContent = 'พบ ' + matched.length + (matched.length >= MAX_RESULTS ? '+' : '') + ' รายการ';
+
+  resultsEl.innerHTML = matched.map((rec, idx) => {
+    const name = rec['ชื่อ'] || '(ไม่มีชื่อ)';
+    const addr = rec['ที่อยู่'] || '';
+    const tel = rec['โทรศัพท์'] || '';
+    const machine = rec['หมายเลขเครื่อง'] || '';
+    let rows = '';
+    if (addr) rows += '<div class="row">📍 ' + escapeHtml(addr) + (rec['จังหวัด'] ? ' จ.' + escapeHtml(rec['จังหวัด']) : '') + '</div>';
+    if (tel) rows += '<div class="row">📞 ' + escapeHtml(tel) + '</div>';
+    if (machine) rows += '<div class="row">🔧 หมายเลขเครื่อง: <b>' + escapeHtml(machine) + '</b></div>';
+    return '<div class="card" onclick="showDetail(' + idx + ')">' +
+      '<div class="name">' + escapeHtml(name) + '</div>' + rows +
+      '</div>';
+  }).join('');
+
+  window.__currentMatched = matched;
+}
+
+function escapeHtml(s) {
+  return (s || '').toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function showDetail(idx) {
+  const rec = window.__currentMatched[idx];
+  modalTitle.textContent = rec['ชื่อ'] || '(ไม่มีชื่อ)';
+  let body = '';
+  for (const col of COLUMNS) {
+    if (col === 'ชื่อ') continue;
+    const v = rec[col];
+    body += '<div class="field"><div class="field-label">' + escapeHtml(col) + '</div>' +
+      '<div class="field-value' + (v ? '' : ' empty') + '">' + (v ? escapeHtml(v) : '-') + '</div></div>';
+  }
+  const coord = rec['พิกัดตำแหน่ง'];
+  if (coord && /^-?\d+(\.\d+)?,\s*-?\d+(\.\d+)?$/.test(coord.trim())) {
+    body += '<a class="map-link" target="_blank" rel="noopener" href="https://www.google.com/maps?q=' + encodeURIComponent(coord.trim()) + '">🗺️ เปิดแผนที่ตำแหน่งนี้</a>';
+  }
+  modalBody.innerHTML = body;
+  overlay.classList.add('active');
+}
+
+function closeModal() {
+  overlay.classList.remove('active');
+}
+
+overlay.addEventListener('click', (e) => {
+  if (e.target === overlay) closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+});
+
+searchInput.addEventListener('input', render);
+
+/* ---------- เริ่มต้น ---------- */
+(async function init() {
+  let saved = null;
+  try { saved = localStorage.getItem(STORAGE_KEY_PW); } catch (e) {}
+  if (saved) {
+    const ok = await unlock(saved, true);
+    if (!ok) {
+      pwError.textContent = '';
+      pwInput.focus();
+    }
+  } else {
+    pwError.textContent = '';
+  }
+})();
+</script>
+
+</body>
+</html>
