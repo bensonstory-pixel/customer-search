@@ -923,12 +923,15 @@ async function loadProducts() {
   renderStockTable();
 }
 
+const LOW_STOCK_FILTER = '__low_stock__';
+
 function updateCategoryOptions() {
   const cats = [...new Set(PRODUCTS.map(p => p.category).filter(c => c))].sort();
   const current = categoryFilter.value;
   categoryFilter.innerHTML = '<option value="">ทุกหมวดหมู่</option>' +
+    '<option value="' + LOW_STOCK_FILTER + '">⚠️ สินค้าใกล้หมด</option>' +
     cats.map(c => '<option value="' + escapeHtml(c) + '">' + escapeHtml(c) + '</option>').join('');
-  if (cats.includes(current)) categoryFilter.value = current;
+  if (current === LOW_STOCK_FILTER || cats.includes(current)) categoryFilter.value = current;
   categoryListEl.innerHTML = cats.map(c => '<option value="' + escapeHtml(c) + '">').join('');
 }
 
@@ -950,7 +953,11 @@ function renderStockTable() {
   }
 
   let list = PRODUCTS.filter(p => {
-    if (cat && p.category !== cat) return false;
+    if (cat === LOW_STOCK_FILTER) {
+      if (Number(p.quantity) > Number(p.min_alert)) return false;
+    } else if (cat && p.category !== cat) {
+      return false;
+    }
     if (q && !normalize(p.name).includes(q)) return false;
     return true;
   });
